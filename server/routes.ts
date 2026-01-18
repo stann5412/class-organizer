@@ -47,8 +47,8 @@ export async function registerRoutes(
       // Ideally storage should take { ...course, userId }.
       
       const input = api.courses.create.input.parse(req.body);
-      // We need to cast or extend the type passed to storage
-      const course = await storage.createCourse({ ...input, userId });
+      // We need to pass the userId which is required in the database but omitted in the insert schema
+      const course = await storage.createCourse({ ...input, userId } as any);
       res.status(201).json(course);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -124,7 +124,11 @@ export async function registerRoutes(
 
   app.post(api.assignments.create.path, isAuthenticated, async (req, res) => {
     try {
-      const input = api.assignments.create.input.parse(req.body);
+      // Coerce dueDate to Date object if it arrives as string
+      const bodySchema = api.assignments.create.input.extend({
+        dueDate: z.coerce.date(),
+      });
+      const input = bodySchema.parse(req.body);
       
       // Verify course ownership
       const course = await storage.getCourse(input.courseId);
@@ -155,7 +159,10 @@ export async function registerRoutes(
       const userId = (req.user as any).claims.sub;
       if (!course || course.userId !== userId) return res.status(403).json({ message: "Forbidden" });
 
-      const input = api.assignments.update.input.parse(req.body);
+      const bodySchema = api.assignments.update.input.extend({
+        dueDate: z.coerce.date().optional(),
+      });
+      const input = bodySchema.parse(req.body);
       const updated = await storage.updateAssignment(id, input);
       res.json(updated);
     } catch (err) {

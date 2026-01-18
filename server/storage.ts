@@ -33,7 +33,7 @@ export class DatabaseStorage implements IStorage {
     return course;
   }
 
-  async createCourse(course: InsertCourse): Promise<Course> {
+  async createCourse(course: any): Promise<Course> {
     const [newCourse] = await db.insert(courses).values(course).returning();
     return newCourse;
   }
@@ -49,8 +49,6 @@ export class DatabaseStorage implements IStorage {
 
   // Assignments
   async getAssignments(userId: string, params?: AssignmentsQueryParams): Promise<(Assignment & { course?: Course })[]> {
-    // Basic implementation - ideally we'd filter in SQL
-    // But since we need to join with courses to filter by user ownership (via course), let's do a join.
     const results = await db.select({
       assignment: assignments,
       course: courses
@@ -70,7 +68,6 @@ export class DatabaseStorage implements IStorage {
     if (params?.sortBy === 'dueDate') {
       filtered.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     }
-    // Priority sort could be added here
 
     return filtered;
   }

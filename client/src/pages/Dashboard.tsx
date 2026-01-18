@@ -112,7 +112,7 @@ export default function Dashboard() {
                     <Card className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4 flex items-center gap-4">
                         <Checkbox 
-                          checked={assignment.completed}
+                          checked={!!assignment.completed}
                           onCheckedChange={(checked) => 
                             updateAssignment({ id: assignment.id, completed: !!checked })
                           }

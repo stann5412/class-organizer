@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
-import type { CourseInput, CourseInputPartial } from "@shared/routes"; // Inferred types if available, otherwise manual match
 
 // Type helpers based on Schema
 type InsertCourse = {

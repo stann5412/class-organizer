@@ -86,7 +86,7 @@ export default function Assignments() {
             <AssignmentForm 
               isPending={isCreating} 
               preselectedCourseId={filterCourseId}
-              onSubmit={(data) => {
+              onSubmit={(data: any) => {
                 createAssignment(data, { onSuccess: () => setIsCreateOpen(false) });
               }} 
             />
@@ -153,7 +153,7 @@ export default function Assignments() {
                 )}
               >
                 <Checkbox 
-                  checked={assignment.completed}
+                  checked={!!assignment.completed}
                   onCheckedChange={(checked) => 
                     updateAssignment({ id: assignment.id, completed: !!checked })
                   }
@@ -246,7 +246,7 @@ export default function Assignments() {
                 dueDate: new Date(editingAssignment.dueDate)
               }}
               isPending={false}
-              onSubmit={(data) => {
+              onSubmit={(data: any) => {
                 updateAssignment({ id: editingAssignment.id, ...data }, { 
                   onSuccess: () => setEditingAssignment(null) 
                 });

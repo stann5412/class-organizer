@@ -41,7 +41,6 @@ export function AssignmentForm({ defaultValues, onSubmit, isPending, preselected
       type: "Homework",
       priority: "medium",
       description: "",
-      dueDate: new Date(),
       completed: false,
       ...defaultValues,
       // Ensure date is object if coming from string
