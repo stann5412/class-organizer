@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -36,6 +37,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <span className="font-display font-bold text-2xl tracking-tight">UniPlan</span>
         </div>
         
+        <div className="mb-6">
+          <ThemeToggle />
+        </div>
+
         <nav className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
