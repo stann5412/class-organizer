@@ -197,18 +197,18 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Select onValueChange={(v) => handleSlotChange(index, "day", v)} value={data.day}>
-                      <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Input size="sm" placeholder="09:00-10:00" defaultValue={data.time} onChange={(e) => handleSlotChange(index, "time", e.target.value)} />
+                    <Input placeholder="09:00-10:00" defaultValue={data.time} onChange={(e) => handleSlotChange(index, "time", e.target.value)} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Select onValueChange={(v) => handleSlotChange(index, "type", v)} value={data.type}>
-                      <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{SLOT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                     <Select onValueChange={(v) => handleSlotChange(index, "freq", v)} value={data.freq}>
-                      <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>

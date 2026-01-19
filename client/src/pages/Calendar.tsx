@@ -20,7 +20,9 @@ import {
   subWeeks,
   isSameWeek,
   setHours,
-  setMinutes
+  setMinutes,
+  differenceInWeeks,
+  isWithinInterval
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 8); // 8 AM to 10 PM
@@ -41,6 +44,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { data: assignments } = useAssignments({ completed: false });
   const { data: courses } = useCourses();
+  const { data: semesters } = useQuery<any[]>({ queryKey: ["/api/semesters"] });
 
   const next = () => setCurrentDate(view === "month" ? addMonths(currentDate, 1) : addWeeks(currentDate, 1));
   const prev = () => setCurrentDate(view === "month" ? subMonths(currentDate, 1) : subWeeks(currentDate, 1));
@@ -72,13 +76,48 @@ export default function CalendarPage() {
     const dayClasses: any[] = [];
     
     courses?.forEach(course => {
-      course.weeklySchedule?.forEach((slot: string) => {
-        if (slot.startsWith(dayName)) {
-          const [_, timeRange] = slot.split(" ");
-          const [start, end] = timeRange.split("-");
-          dayClasses.push({ course, start, end, slot });
-        }
-      });
+      const semester = semesters?.find(s => s.id === course.semesterId);
+      
+      // Check if day is within semester range
+      if (semester) {
+        const start = parseISO(semester.startDate);
+        const end = parseISO(semester.endDate);
+        if (!isWithinInterval(day, { start, end })) return;
+
+        course.weeklySchedule?.forEach((slotJson: string) => {
+          const slot = typeof slotJson === 'string' ? JSON.parse(slotJson) : slotJson;
+          if (slot.day === dayName) {
+            // Check frequency
+            if (slot.freq === "bi-weekly-even" || slot.freq === "bi-weekly-odd") {
+              const weeksDiff = differenceInWeeks(day, start);
+              const isEven = weeksDiff % 2 === 0;
+              if (slot.freq === "bi-weekly-even" && !isEven) return;
+              if (slot.freq === "bi-weekly-odd" && isEven) return;
+            }
+
+            const [startTime, endTime] = slot.time.split("-");
+            dayClasses.push({ course, start: startTime, end: endTime, slot });
+          }
+        });
+      } else {
+        // Legacy or no-semester courses (show always for now)
+        course.weeklySchedule?.forEach((slotJson: string) => {
+           try {
+             const slot = typeof slotJson === 'string' ? JSON.parse(slotJson) : slotJson;
+             if (slot.day === dayName) {
+               const [startTime, endTime] = slot.time.split("-");
+               dayClasses.push({ course, start: startTime, end: endTime, slot });
+             }
+           } catch (e) {
+             // Handle old format "DAY HH:MM-HH:MM"
+             if (typeof slotJson === 'string' && slotJson.startsWith(dayName)) {
+               const [_, timeRange] = slotJson.split(" ");
+               const [start, end] = timeRange.split("-");
+               dayClasses.push({ course, start, end, slot: { day: dayName, time: timeRange } });
+             }
+           }
+        });
+      }
     });
     
     return dayClasses;
@@ -222,25 +261,27 @@ export default function CalendarPage() {
                   <div key={hour} className="h-[60px] border-b border-dashed border-border/50" />
                 ))}
                 {dayClasses.map((cls, idx) => {
-                  const [startH, startM] = cls.start.split(":").map(Number);
-                  const [endH, endM] = cls.end.split(":").map(Number);
-                  const top = (startH - 8) * 60 + startM;
-                  const height = (endH * 60 + endM) - (startH * 60 + startM);
-                  
-                  return (
-                    <div 
-                      key={idx}
-                      className={cn(
-                        "absolute left-1 right-1 rounded-md p-2 text-white overflow-hidden shadow-sm border border-white/20",
-                        getCourseColor(cls.course.color)
-                      )}
-                      style={{ top: `${top}px`, height: `${height}px` }}
-                    >
-                      <p className="text-[10px] font-bold truncate leading-tight">{cls.course.code}</p>
-                      <p className="text-[9px] opacity-90 truncate leading-tight">{cls.course.name}</p>
-                      <p className="text-[8px] mt-1 opacity-80 font-mono">{cls.start} - {cls.end}</p>
-                    </div>
-                  );
+                  try {
+                    const [startH, startM] = cls.start.split(":").map(Number);
+                    const [endH, endM] = cls.end.split(":").map(Number);
+                    const top = (startH - 8) * 60 + startM;
+                    const height = (endH * 60 + endM) - (startH * 60 + startM);
+                    
+                    return (
+                      <div 
+                        key={idx}
+                        className={cn(
+                          "absolute left-1 right-1 rounded-md p-2 text-white overflow-hidden shadow-sm border border-white/20",
+                          getCourseColor(cls.course.color)
+                        )}
+                        style={{ top: `${top}px`, height: `${height}px` }}
+                      >
+                        <p className="text-[10px] font-bold truncate leading-tight">{cls.course.code} ({cls.slot.type || 'Lecture'})</p>
+                        <p className="text-[9px] opacity-90 truncate leading-tight">{cls.course.name}</p>
+                        <p className="text-[8px] mt-1 opacity-80 font-mono">{cls.start} - {cls.end}</p>
+                      </div>
+                    );
+                  } catch (e) { return null; }
                 })}
               </div>
             );
