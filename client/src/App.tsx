@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import Dashboard from "@/pages/Dashboard";
 import Courses from "@/pages/Courses";
 import Assignments from "@/pages/Assignments";
+import CalendarPage from "@/pages/Calendar";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
@@ -45,6 +46,10 @@ function Router() {
       
       <Route path="/assignments">
         <ProtectedRoute component={Assignments} />
+      </Route>
+
+      <Route path="/calendar">
+        <ProtectedRoute component={CalendarPage} />
       </Route>
 
       <Route component={NotFound} />

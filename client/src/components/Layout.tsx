@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   BookOpen, 
   CheckSquare, 
+  Calendar,
   LogOut, 
   Menu,
   GraduationCap
@@ -22,6 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/courses", label: "Courses", icon: BookOpen },
     { href: "/assignments", label: "Assignments", icon: CheckSquare },
+    { href: "/calendar", label: "Calendar", icon: Calendar },
   ];
 
   const NavContent = () => (
