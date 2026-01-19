@@ -64,7 +64,7 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "weeklySchedule" as any,
+    name: "weeklySchedule" as never,
   });
 
   const handleSlotChange = (index: number, field: string, value: string) => {
@@ -177,7 +177,7 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append(JSON.stringify({ day: "MON", time: "09:00-10:00", type: "Lecture", freq: "weekly" }))}
+              onClick={() => append(JSON.stringify({ day: "MON", time: "09:00-10:00", type: "Lecture", freq: "weekly" }) as never)}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Slot
