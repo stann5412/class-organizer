@@ -1,12 +1,18 @@
 import { db } from "./db";
 import {
-  courses, assignments,
+  courses, assignments, semesters,
   type InsertCourse, type InsertAssignment, type UpdateCourseRequest, type UpdateAssignmentRequest,
-  type Course, type Assignment, type AssignmentsQueryParams
+  type Course, type Assignment, type AssignmentsQueryParams, type Semester
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
+  // Semesters
+  getSemesters(userId: string): Promise<Semester[]>;
+  getSemester(id: number): Promise<Semester | undefined>;
+  createSemester(semester: any): Promise<Semester>;
+  deleteSemester(id: number): Promise<void>;
+
   // Courses
   getCourses(userId: string): Promise<Course[]>;
   getCourse(id: number): Promise<Course | undefined>;
@@ -23,6 +29,25 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Semesters
+  async getSemesters(userId: string): Promise<Semester[]> {
+    return await db.select().from(semesters).where(eq(semesters.userId, userId));
+  }
+
+  async getSemester(id: number): Promise<Semester | undefined> {
+    const [semester] = await db.select().from(semesters).where(eq(semesters.id, id));
+    return semester;
+  }
+
+  async createSemester(semester: any): Promise<Semester> {
+    const [newSemester] = await db.insert(semesters).values(semester).returning();
+    return newSemester;
+  }
+
+  async deleteSemester(id: number): Promise<void> {
+    await db.delete(semesters).where(eq(semesters.id, id));
+  }
+
   // Courses
   async getCourses(userId: string): Promise<Course[]> {
     return await db.select().from(courses).where(eq(courses.userId, userId));

@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Plus, Trash2, Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-// Colors for the course badge
 const COURSE_COLORS = [
   { value: "bg-blue-500", label: "Blue", preview: "bg-blue-500" },
   { value: "bg-indigo-500", label: "Indigo", preview: "bg-indigo-500" },
@@ -30,6 +30,12 @@ const COURSE_COLORS = [
 ];
 
 const DAYS_OF_WEEK = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const SLOT_TYPES = ["Lecture", "DGD", "Lab", "Tutorial", "Seminar"];
+const FREQUENCIES = [
+  { value: "weekly", label: "Weekly" },
+  { value: "bi-weekly-even", label: "Bi-Weekly (Even weeks)" },
+  { value: "bi-weekly-odd", label: "Bi-Weekly (Odd weeks)" },
+];
 
 type FormData = z.infer<typeof insertCourseSchema>;
 
@@ -40,6 +46,8 @@ interface CourseFormProps {
 }
 
 export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormProps) {
+  const { data: semesters } = useQuery<any[]>({ queryKey: ["/api/semesters"] });
+
   const form = useForm<FormData>({
     resolver: zodResolver(insertCourseSchema),
     defaultValues: {
@@ -47,6 +55,7 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
       code: "",
       location: "",
       schedule: "",
+      semesterId: null,
       weeklySchedule: [],
       color: "bg-blue-500",
       ...defaultValues,
@@ -57,6 +66,19 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
     control: form.control,
     name: "weeklySchedule" as any,
   });
+
+  const handleSlotChange = (index: number, field: string, value: string) => {
+    const current = form.getValues(`weeklySchedule.${index}` as any) || JSON.stringify({ day: "MON", time: "09:00-10:00", type: "Lecture", freq: "weekly" });
+    const data = typeof current === 'string' ? JSON.parse(current) : current;
+    data[field] = value;
+    form.setValue(`weeklySchedule.${index}` as any, JSON.stringify(data));
+  };
+
+  const getSlotData = (index: number) => {
+    const current = form.getValues(`weeklySchedule.${index}` as any);
+    if (!current) return { day: "MON", time: "09:00-10:00", type: "Lecture", freq: "weekly" };
+    return typeof current === 'string' ? JSON.parse(current) : current;
+  };
 
   return (
     <Form {...form}>
@@ -77,6 +99,48 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
           />
           <FormField
             control={form.control}
+            name="semesterId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Semester</FormLabel>
+                <Select 
+                  onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))} 
+                  value={field.value?.toString() || "none"}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Semester" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">No Semester</SelectItem>
+                    {semesters?.map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+           <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Course Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Introduction to CS" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="color"
             render={({ field }) => (
               <FormItem>
@@ -84,7 +148,7 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
                 <Select onValueChange={field.onChange} defaultValue={field.value || "bg-blue-500"}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a color" />
+                      <SelectValue />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -98,25 +162,10 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
                     ))}
                   </SelectContent>
                 </Select>
-                <FormMessage />
               </FormItem>
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Course Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Introduction to Computer Science" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -128,87 +177,60 @@ export function CourseForm({ defaultValues, onSubmit, isPending }: CourseFormPro
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append("")}
+              onClick={() => append(JSON.stringify({ day: "MON", time: "09:00-10:00", type: "Lecture", freq: "weekly" }))}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Slot
             </Button>
           </div>
           
-          <div className="space-y-2">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex gap-2 items-start">
-                <div className="flex-1 grid grid-cols-2 gap-2">
-                   <Select 
-                    onValueChange={(val) => {
-                      const current = form.getValues(`weeklySchedule.${index}` as any) || "MON 09:00-10:00";
-                      const [_, time] = (current as string).includes(" ") ? (current as string).split(" ") : ["MON", "09:00-10:00"];
-                      form.setValue(`weeklySchedule.${index}` as any, `${val} ${time}`);
-                    }}
-                    defaultValue={(form.getValues(`weeklySchedule.${index}` as any) as string)?.split(" ")[0] || "MON"}
-                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                    </SelectContent>
-                   </Select>
-                   <Input 
-                    placeholder="HH:MM-HH:MM" 
-                    defaultValue={(form.getValues(`weeklySchedule.${index}` as any) as string)?.split(" ")[1] || "09:00-10:00"}
-                    onChange={(e) => {
-                      const current = form.getValues(`weeklySchedule.${index}` as any) || "MON 09:00-10:00";
-                      const [day, _] = (current as string).includes(" ") ? (current as string).split(" ") : ["MON", "09:00-10:00"];
-                      form.setValue(`weeklySchedule.${index}` as any, `${day} ${e.target.value}`);
-                    }}
-                   />
+          <div className="space-y-3">
+            {fields.map((field, index) => {
+              const data = getSlotData(index);
+              return (
+                <div key={field.id} className="p-3 border rounded-lg bg-muted/20 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Slot #{index + 1}</span>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => remove(index)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select onValueChange={(v) => handleSlotChange(index, "day", v)} value={data.day}>
+                      <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>{DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input size="sm" placeholder="09:00-10:00" defaultValue={data.time} onChange={(e) => handleSlotChange(index, "time", e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select onValueChange={(v) => handleSlotChange(index, "type", v)} value={data.type}>
+                      <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>{SLOT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select onValueChange={(v) => handleSlotChange(index, "freq", v)} value={data.freq}>
+                      <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive"
-                  onClick={() => remove(index)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-            {fields.length === 0 && (
-              <p className="text-xs text-muted-foreground italic">No weekly slots added. Use "Add Slot" to schedule recurring classes.</p>
-            )}
+              );
+            })}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
-                <FormControl>
-                  <Input placeholder="Room 304" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name="schedule"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Legacy Notes</FormLabel>
-                <FormControl>
-                  <Input placeholder="Extra schedule info" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location</FormLabel>
+              <FormControl>
+                <Input placeholder="Room 304" {...field} value={field.value || ""} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

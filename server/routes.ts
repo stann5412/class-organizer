@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
+import { insertSemesterSchema } from "@shared/schema";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { z } from "zod";
 
@@ -15,6 +16,35 @@ export async function registerRoutes(
 
   // Protected Routes - require authentication
   
+  // Semesters
+  app.get("/api/semesters", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const semesters = await storage.getSemesters(userId);
+    res.json(semesters);
+  });
+
+  app.post("/api/semesters", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const input = insertSemesterSchema.parse(req.body);
+      const semester = await storage.createSemester({ ...input, userId });
+      res.status(201).json(semester);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.delete("/api/semesters/:id", isAuthenticated, async (req, res) => {
+    const id = Number(req.params.id);
+    const existing = await storage.getSemester(id);
+    if (!existing) return res.status(404).json({ message: "Semester not found" });
+    const userId = (req.user as any).claims.sub;
+    if (existing.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+    await storage.deleteSemester(id);
+    res.status(204).send();
+  });
+
   // Courses
   app.get(api.courses.list.path, isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;

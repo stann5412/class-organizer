@@ -8,15 +8,25 @@ export * from "./models/auth";
 
 // === TABLE DEFINITIONS ===
 
+export const semesters = pgTable("semesters", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(), // e.g. "Winter 2026"
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id),
+  semesterId: integer("semester_id").references(() => semesters.id, { onDelete: 'set null' }),
   name: text("name").notNull(),
   code: text("code").notNull(),
   location: text("location"),
-  schedule: text("schedule"), // Legacy text schedule
-  weeklySchedule: text("weekly_schedule").array(), // Array of "DAY HH:MM-HH:MM" e.g. ["MON 10:00-11:30", "WED 10:00-11:30"]
-  color: text("color").default("blue"), // for UI styling
+  schedule: text("schedule"), // Legacy
+  weeklySchedule: text("weekly_schedule").array(), // Array of JSON stringified objects: { day, start, end, type, frequency }
+  color: text("color").default("blue"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -39,7 +49,19 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     fields: [courses.userId],
     references: [users.id],
   }),
+  semester: one(semesters, {
+    fields: [courses.semesterId],
+    references: [semesters.id],
+  }),
   assignments: many(assignments),
+}));
+
+export const semestersRelations = relations(semesters, ({ one, many }) => ({
+  user: one(users, {
+    fields: [semesters.userId],
+    references: [users.id],
+  }),
+  courses: many(courses),
 }));
 
 export const assignmentsRelations = relations(assignments, ({ one }) => ({
@@ -51,7 +73,11 @@ export const assignmentsRelations = relations(assignments, ({ one }) => ({
 
 // === BASE SCHEMAS ===
 
+export const insertSemesterSchema = createInsertSchema(semesters).omit({ id: true, userId: true, createdAt: true });
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, userId: true, createdAt: true });
+
+export type Semester = typeof semesters.$inferSelect;
+export type InsertSemester = z.infer<typeof insertSemesterSchema>;
 export const insertAssignmentSchema = createInsertSchema(assignments).omit({ id: true, createdAt: true });
 
 // === EXPLICIT API CONTRACT TYPES ===
