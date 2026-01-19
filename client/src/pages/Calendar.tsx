@@ -163,7 +163,7 @@ export default function CalendarPage() {
                       <TooltipTrigger asChild>
                         <div className={cn(
                           "text-[9px] px-1 py-0.5 rounded border border-transparent cursor-default truncate flex items-center gap-1",
-                          getCourseColor(assignment.courseColor),
+                          getCourseColor(assignment.course?.color),
                           "text-white"
                         )}>
                           <Clock className="w-2.5 h-2.5 shrink-0" />
