@@ -14,7 +14,8 @@ export const courses = pgTable("courses", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   location: text("location"),
-  schedule: text("schedule"), // e.g. "Mon/Wed 10:00 AM"
+  schedule: text("schedule"), // Legacy text schedule
+  weeklySchedule: text("weekly_schedule").array(), // Array of "DAY HH:MM-HH:MM" e.g. ["MON 10:00-11:30", "WED 10:00-11:30"]
   color: text("color").default("blue"), // for UI styling
   createdAt: timestamp("created_at").defaultNow(),
 });
