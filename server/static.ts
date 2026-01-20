@@ -2,28 +2,24 @@ import express, { type Express } from "express";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  // Utilisation de process.cwd() pour pointer vers la racine du projet sur Vercel
   const distPath = path.resolve(process.cwd(), "dist", "public");
 
-  // On sert les fichiers statiques normalement
+  // On sert les fichiers statiques (JS, CSS, Images)
   app.use(express.static(distPath));
 
-  // CORRECTION POUR EXPRESS 5 : 
-  // On utilise "(.*)" au lieu de "*" pour capturer toutes les routes (wildcard)
-  // sans provoquer l'erreur "Missing parameter name".
-  app.get("(.*)", (req, res, next) => {
-    // Si la requête commence par /api, on ne sert pas l'index.html
-    // On laisse les routes de routes.ts gérer la requête
+  // CORRECTION EXPRESS 5 : Syntaxe de paramètre nommé
+  // ":path*" capture tout le reste de l'URL dans une variable nommée "path"
+  app.get("/:path*", (req, res, next) => {
+    // Si la requête est destinée à l'API, on ne sert pas le HTML
     if (req.path.startsWith("/api")) {
       return next();
     }
     
-    // Pour toutes les autres routes (navigation React), on envoie l'index.html
+    // On envoie l'index.html pour toutes les autres routes (React routing)
     res.sendFile(path.resolve(distPath, "index.html"), (err) => {
       if (err) {
-        // Au lieu de faire crasher le serveur avec un throw, 
-        // on renvoie une erreur 404 propre.
-        res.status(404).send("Site files not found. Build may have failed.");
+        // En cas d'erreur de fichier, on renvoie un 404 propre au lieu de crash
+        res.status(404).send("Fichiers du site introuvables. Vérifiez le build.");
       }
     });
   });
