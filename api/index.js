@@ -1,4 +1,4 @@
 // api/index.js
-import app from '../dist/index.js'; // Assure-toi que l'extension est .js ou .cjs selon ton build
+import app from '../dist/index.cjs';
 
 export default app;
