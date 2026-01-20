@@ -12,6 +12,7 @@ declare module "http" {
   }
 }
 
+// Configuration des middlewares standards
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -22,6 +23,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Fonction de log personnalisée pour le monitoring
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -33,6 +35,7 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Middleware de logging des requêtes API
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -51,7 +54,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -60,22 +62,24 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // On enregistre les routes API
+  // 1. Enregistrement des routes API (celles définies dans routes.ts)
   await registerRoutes(httpServer, app);
 
-  // Gestion des erreurs
+  // 2. Middleware de gestion globale des erreurs
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    console.error("Internal Server Error:", err);
     if (res.headersSent) return next(err);
     return res.status(status).json({ message });
   });
 
-  // MODIFICATION POUR VERCEL : 
-  // On ne lance pas "httpServer.listen" si on est sur Vercel
+  // 3. Configuration du service des fichiers statiques (L'interface)
   if (process.env.NODE_ENV === "production") {
+    // En production sur Vercel, on sert le dossier dist/public
     serveStatic(app);
   } else {
+    // En développement local (MacBook Pro), on utilise Vite en temps réel
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
     
@@ -86,5 +90,5 @@ app.use((req, res, next) => {
   }
 })();
 
-// TRÈS IMPORTANT : On exporte l'application pour Vercel
+// TRÈS IMPORTANT : Exportation pour le déploiement Vercel
 export default app;
