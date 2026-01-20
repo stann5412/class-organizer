@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { insertSemesterSchema } from "@shared/schema";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -11,19 +10,17 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   // Setup Auth first
-  await setupAuth(app);
-  registerAuthRoutes(app);
 
   // Protected Routes - require authentication
   
   // Semesters
-  app.get("/api/semesters", isAuthenticated, async (req, res) => {
+  app.get("/api/semesters", async (req, res) => {
     const userId = (req.user as any).claims.sub;
     const semesters = await storage.getSemesters(userId);
     res.json(semesters);
   });
 
-  app.post("/api/semesters", isAuthenticated, async (req, res) => {
+  app.post("/api/semesters", async (req, res) => {
     try {
       const userId = (req.user as any).claims.sub;
       const input = insertSemesterSchema.parse(req.body);
@@ -35,7 +32,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/semesters/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/semesters/:id", async (req, res) => {
     const id = Number(req.params.id);
     const existing = await storage.getSemester(id);
     if (!existing) return res.status(404).json({ message: "Semester not found" });
@@ -46,13 +43,13 @@ export async function registerRoutes(
   });
 
   // Courses
-  app.get(api.courses.list.path, isAuthenticated, async (req, res) => {
+  app.get(api.courses.list.path, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     const courses = await storage.getCourses(userId);
     res.json(courses);
   });
 
-  app.get(api.courses.get.path, isAuthenticated, async (req, res) => {
+  app.get(api.courses.get.path, async (req, res) => {
     const course = await storage.getCourse(Number(req.params.id));
     if (!course) return res.status(404).json({ message: "Course not found" });
     
@@ -63,7 +60,7 @@ export async function registerRoutes(
     res.json(course);
   });
 
-  app.post(api.courses.create.path, isAuthenticated, async (req, res) => {
+  app.post(api.courses.create.path, async (req, res) => {
     try {
       const userId = (req.user as any).claims.sub;
       // Inject userId into the body for validation if schema requires it, 
@@ -91,7 +88,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.courses.update.path, isAuthenticated, async (req, res) => {
+  app.put(api.courses.update.path, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const existing = await storage.getCourse(id);
@@ -114,7 +111,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.courses.delete.path, isAuthenticated, async (req, res) => {
+  app.delete(api.courses.delete.path, async (req, res) => {
     const id = Number(req.params.id);
     const existing = await storage.getCourse(id);
     if (!existing) return res.status(404).json({ message: "Course not found" });
@@ -127,7 +124,7 @@ export async function registerRoutes(
   });
 
   // Assignments
-  app.get(api.assignments.list.path, isAuthenticated, async (req, res) => {
+  app.get(api.assignments.list.path, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     // Parse query params
     const query = req.query as any;
@@ -140,7 +137,7 @@ export async function registerRoutes(
     res.json(assignments);
   });
 
-  app.get(api.assignments.get.path, isAuthenticated, async (req, res) => {
+  app.get(api.assignments.get.path, async (req, res) => {
     const assignment = await storage.getAssignment(Number(req.params.id));
     if (!assignment) return res.status(404).json({ message: "Assignment not found" });
     
@@ -152,7 +149,7 @@ export async function registerRoutes(
     res.json(assignment);
   });
 
-  app.post(api.assignments.create.path, isAuthenticated, async (req, res) => {
+  app.post(api.assignments.create.path, async (req, res) => {
     try {
       // Coerce dueDate to Date object if it arrives as string
       const bodySchema = api.assignments.create.input.extend({
@@ -178,7 +175,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.assignments.update.path, isAuthenticated, async (req, res) => {
+  app.put(api.assignments.update.path, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const existing = await storage.getAssignment(id);
@@ -206,7 +203,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.assignments.delete.path, isAuthenticated, async (req, res) => {
+  app.delete(api.assignments.delete.path, async (req, res) => {
     const id = Number(req.params.id);
     const existing = await storage.getAssignment(id);
     if (!existing) return res.status(404).json({ message: "Assignment not found" });
