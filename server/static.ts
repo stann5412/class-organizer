@@ -4,22 +4,24 @@ import path from "path";
 export function serveStatic(app: Express) {
   const distPath = path.resolve(process.cwd(), "dist", "public");
 
-  // On sert les fichiers statiques (JS, CSS, Images)
+  // 1. On sert les fichiers statiques (images, js, css)
   app.use(express.static(distPath));
 
-  // CORRECTION EXPRESS 5 : Syntaxe de paramètre nommé
-  // ":path*" capture tout le reste de l'URL dans une variable nommée "path"
-  app.get("/:path*", (req, res, next) => {
-    // Si la requête est destinée à l'API, on ne sert pas le HTML
+  // 2. SOLUTION ULTIME : Middleware de secours au lieu d'une route nommée
+  // Au lieu de app.get("*") ou app.get("/:path*"), on utilise app.use
+  // qui intercepte TOUT ce qui arrive jusqu'ici.
+  app.use((req, res, next) => {
+    // Si c'est un appel API qui a échoué, on ne renvoie pas l'index.html
+    // On laisse Express renvoyer un 404 API standard
     if (req.path.startsWith("/api")) {
       return next();
     }
-    
-    // On envoie l'index.html pour toutes les autres routes (React routing)
+
+    // Pour tout le reste (navigation React), on envoie l'index.html
     res.sendFile(path.resolve(distPath, "index.html"), (err) => {
       if (err) {
-        // En cas d'erreur de fichier, on renvoie un 404 propre au lieu de crash
-        res.status(404).send("Fichiers du site introuvables. Vérifiez le build.");
+        // On évite le crash, on renvoie un status code
+        res.status(404).send("Fichiers statiques introuvables sur Vercel.");
       }
     });
   });
