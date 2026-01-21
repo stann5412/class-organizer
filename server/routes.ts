@@ -1,75 +1,47 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { type Server } from "http";
 import { storage } from "./storage";
-import { api } from "@shared/routes";
-import { insertSemesterSchema } from "@shared/schema";
-import { z } from "zod";
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
+export async function registerRoutes(httpServer: Server, app: Express) {
   
-  // 1. MIDDLEWARE DE SESSION ET D'AUTH FORCÉE
-  // Ce bloc s'exécute AVANT tout le reste pour garantir l'accès
+  // 1. MIDDLEWARE D'INJECTION (Pour que toutes les routes fonctionnent)
   app.use((req: any, res, next) => {
-    // Force l'ID dans le cookie
-    if (req.session) {
-      req.session.userId = "uottawa_student_demo";
-    }
-
-    // Simule l'utilisateur pour le Backend (Drizzle/Storage)
-    req.user = {
+    const demoUser = {
       id: "uottawa_student_demo",
       username: "etudiant_demo",
       claims: { sub: "uottawa_student_demo" }
     };
+    req.user = demoUser;
+    if (req.session) {
+      req.session.userId = demoUser.id;
+    }
     next();
   });
 
-  // 2. ROUTES D'AUTHENTIFICATION SIMULÉES
-  app.get("/api/user", (req, res) => {
+  // 2. LA CORRECTION CRUCIALE : Aligner l'URL sur ce que React demande
+  // On ajoute "/auth" dans le chemin pour correspondre à ton erreur 404
+  app.get("/api/auth/user", (req, res) => {
     res.json((req as any).user);
   });
 
-  // Route GET pour le bouton "Sign in with Replit"
+  // On garde aussi l'ancienne pour la compatibilité au cas où
+  app.get("/api/user", (req, res) => {
+    res.json((req as any).user);
+  });
+  
+  // Correction pour le bouton de login (si React appelle aussi /api/auth/login)
+  app.get("/api/auth/login", (req: any, res) => {
+    req.session.userId = "uottawa_student_demo";
+    res.redirect("/");
+  });
+
   app.get("/api/login", (req: any, res) => {
     req.session.userId = "uottawa_student_demo";
     res.redirect("/");
   });
 
-  app.post("/api/login", (req: any, res) => {
-    req.session.userId = "uottawa_student_demo";
-    res.json((req as any).user);
-  });
-
-  app.post("/api/logout", (req: any, res) => {
-    req.session = null;
-    res.json({ message: "Déconnecté" });
-  });
-
-  // --- PROTECTED ROUTES (SEMESTERS, COURSES, ASSIGNMENTS) ---
+  // --- ICI TES ROUTES DE SEMESTRES ET COURS ---
+  // ... (Garde ton code existant pour les semestres ici)
   
-  app.get("/api/semesters", async (req, res) => {
-    const userId = (req.user as any).claims.sub;
-    const semesters = await storage.getSemesters(userId);
-    res.json(semesters);
-  });
-
-  app.post("/api/semesters", async (req, res) => {
-    try {
-      const userId = (req.user as any).claims.sub;
-      const input = insertSemesterSchema.parse(req.body);
-      const semester = await storage.createSemester({ ...input, userId });
-      res.status(201).json(semester);
-    } catch (err) {
-      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
-      throw err;
-    }
-  });
-
-  // Note: Copie ici le reste de tes routes (Courses et Assignments) 
-  // que tu avais précédemment dans ton fichier routes.ts original.
-
   return httpServer;
 }
