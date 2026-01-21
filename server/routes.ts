@@ -10,30 +10,36 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // 1. SIMULATION D'AUTH (Pour débloquer l'interface sur Vercel)
-  // Ce middleware injecte un utilisateur fictif dans chaque requête
+  // 1. MIDDLEWARE DE SIMULATION D'AUTH
+  // Indispensable pour que 'req.user' existe dans toutes les routes suivantes
   app.use((req, res, next) => {
     (req as any).user = {
+      id: "uottawa_student_demo",
+      username: "etudiant_demo",
       claims: {
-        sub: "uottawa_student_demo" // ID qui sera utilisé dans ta base Neon
+        sub: "uottawa_student_demo"
       }
     };
     next();
   });
 
-  // 2. ROUTES DE LOGIN (Pour éviter l'erreur 404 /api/login)
-  app.get("/api/login", (req, res) => {
-    res.json({ status: "success", message: "Mode démo activé" });
+  // 2. ROUTES D'AUTHENTIFICATION SIMULÉES
+  // Route que React appelle pour savoir si on est connecté
+  app.get("/api/user", (req, res) => {
+    res.json((req as any).user);
   });
 
+  // Route appelée par le formulaire de connexion
   app.post("/api/login", (req, res) => {
-    res.json({ 
-      status: "success", 
-      user: { id: "uottawa_student_demo", name: "Étudiant uOttawa" } 
-    });
+    res.json((req as any).user);
   });
 
-  // --- PROTECTED ROUTES ---
+  // Route de déconnexion
+  app.post("/api/logout", (req, res) => {
+    res.json({ message: "Déconnecté" });
+  });
+
+  // --- PROTECTED ROUTES (SEMESTERS, COURSES, ASSIGNMENTS) ---
   
   // Semesters
   app.get("/api/semesters", async (req, res) => {
