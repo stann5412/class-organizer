@@ -9,9 +9,31 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup Auth first
+  
+  // 1. SIMULATION D'AUTH (Pour débloquer l'interface sur Vercel)
+  // Ce middleware injecte un utilisateur fictif dans chaque requête
+  app.use((req, res, next) => {
+    (req as any).user = {
+      claims: {
+        sub: "uottawa_student_demo" // ID qui sera utilisé dans ta base Neon
+      }
+    };
+    next();
+  });
 
-  // Protected Routes - require authentication
+  // 2. ROUTES DE LOGIN (Pour éviter l'erreur 404 /api/login)
+  app.get("/api/login", (req, res) => {
+    res.json({ status: "success", message: "Mode démo activé" });
+  });
+
+  app.post("/api/login", (req, res) => {
+    res.json({ 
+      status: "success", 
+      user: { id: "uottawa_student_demo", name: "Étudiant uOttawa" } 
+    });
+  });
+
+  // --- PROTECTED ROUTES ---
   
   // Semesters
   app.get("/api/semesters", async (req, res) => {
@@ -53,7 +75,6 @@ export async function registerRoutes(
     const course = await storage.getCourse(Number(req.params.id));
     if (!course) return res.status(404).json({ message: "Course not found" });
     
-    // Check ownership
     const userId = (req.user as any).claims.sub;
     if (course.userId !== userId) return res.status(403).json({ message: "Forbidden" });
 
@@ -63,18 +84,7 @@ export async function registerRoutes(
   app.post(api.courses.create.path, async (req, res) => {
     try {
       const userId = (req.user as any).claims.sub;
-      // Inject userId into the body for validation if schema requires it, 
-      // or just pass it to storage if schema omitted it (which it did).
-      // Our insertCourseSchema omitted userId, so we need to add it manually when calling storage.
-      // But wait, storage.createCourse takes InsertCourse which omitted userId.
-      // Let's check schema.ts... 
-      // insertCourseSchema omits userId. But database table requires it.
-      // So InsertCourse type does NOT have userId. 
-      // We need to fix storage.ts or schema.ts to handle this.
-      // Ideally storage should take { ...course, userId }.
-      
       const input = api.courses.create.input.parse(req.body);
-      // We need to pass the userId which is required in the database but omitted in the insert schema
       const course = await storage.createCourse({ ...input, userId } as any);
       res.status(201).json(course);
     } catch (err) {
@@ -126,7 +136,6 @@ export async function registerRoutes(
   // Assignments
   app.get(api.assignments.list.path, async (req, res) => {
     const userId = (req.user as any).claims.sub;
-    // Parse query params
     const query = req.query as any;
     const params = {
       courseId: query.courseId ? Number(query.courseId) : undefined,
@@ -141,7 +150,6 @@ export async function registerRoutes(
     const assignment = await storage.getAssignment(Number(req.params.id));
     if (!assignment) return res.status(404).json({ message: "Assignment not found" });
     
-    // Check ownership via course
     const course = await storage.getCourse(assignment.courseId);
     const userId = (req.user as any).claims.sub;
     if (!course || course.userId !== userId) return res.status(403).json({ message: "Forbidden" });
@@ -151,13 +159,11 @@ export async function registerRoutes(
 
   app.post(api.assignments.create.path, async (req, res) => {
     try {
-      // Coerce dueDate to Date object if it arrives as string
       const bodySchema = api.assignments.create.input.extend({
         dueDate: z.coerce.date(),
       });
       const input = bodySchema.parse(req.body);
       
-      // Verify course ownership
       const course = await storage.getCourse(input.courseId);
       const userId = (req.user as any).claims.sub;
       if (!course || course.userId !== userId) return res.status(403).json({ message: "Forbidden" });
@@ -181,7 +187,6 @@ export async function registerRoutes(
       const existing = await storage.getAssignment(id);
       if (!existing) return res.status(404).json({ message: "Assignment not found" });
 
-      // Verify ownership
       const course = await storage.getCourse(existing.courseId);
       const userId = (req.user as any).claims.sub;
       if (!course || course.userId !== userId) return res.status(403).json({ message: "Forbidden" });
@@ -208,7 +213,6 @@ export async function registerRoutes(
     const existing = await storage.getAssignment(id);
     if (!existing) return res.status(404).json({ message: "Assignment not found" });
 
-    // Verify ownership
     const course = await storage.getCourse(existing.courseId);
     const userId = (req.user as any).claims.sub;
     if (!course || course.userId !== userId) return res.status(403).json({ message: "Forbidden" });
