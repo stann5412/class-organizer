@@ -29,7 +29,13 @@ export async function registerRoutes(
     res.json((req as any).user);
   });
 
-  // Route appelée par le formulaire de connexion
+  // NOUVEAU : Route GET pour intercepter le clic sur le bouton "Sign in with Replit"
+  // Au lieu d'afficher "Cannot GET", on redirige vers l'accueil car l'auth est simulée
+  app.get("/api/login", (req, res) => {
+    res.redirect("/");
+  });
+
+  // Route appelée par le formulaire de connexion (POST)
   app.post("/api/login", (req, res) => {
     res.json((req as any).user);
   });
