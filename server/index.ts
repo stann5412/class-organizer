@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import cookieSession from "cookie-session"; // Assure-toi que c'est installé
+import cookieSession from "cookie-session";
 
 const app = express();
 const httpServer = createServer(app);
@@ -11,16 +11,17 @@ const httpServer = createServer(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// CONFIGURATION DES SESSIONS (Pour débloquer le Login React)
+// CONFIGURATION DES SESSIONS
+// On utilise des réglages moins restrictifs pour forcer le fonctionnement sur Vercel
 app.use(cookieSession({
   name: 'session',
   keys: ['uottawa-key-2026'],
   maxAge: 24 * 60 * 60 * 1000, // 24 heures
-  secure: process.env.NODE_ENV === "production",
+  secure: false, // Permet au cookie de s'installer plus facilement pour le test
   sameSite: 'lax'
 }));
 
-// Fonction de log
+// Fonction de log pour le monitoring Vercel
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,

@@ -10,10 +10,16 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // MIDDLEWARE DE SIMULATION D'AUTH
-  app.use((req, res, next) => {
-    // On injecte l'utilisateur dans req.user pour les routes protégées
-    (req as any).user = {
+  // 1. MIDDLEWARE DE SESSION ET D'AUTH FORCÉE
+  // Ce bloc s'exécute AVANT tout le reste pour garantir l'accès
+  app.use((req: any, res, next) => {
+    // Force l'ID dans le cookie
+    if (req.session) {
+      req.session.userId = "uottawa_student_demo";
+    }
+
+    // Simule l'utilisateur pour le Backend (Drizzle/Storage)
+    req.user = {
       id: "uottawa_student_demo",
       username: "etudiant_demo",
       claims: { sub: "uottawa_student_demo" }
@@ -21,14 +27,13 @@ export async function registerRoutes(
     next();
   });
 
-  // ROUTES D'AUTHENTIFICATION
+  // 2. ROUTES D'AUTHENTIFICATION SIMULÉES
   app.get("/api/user", (req, res) => {
-    // Si la session existe, React verra qu'on est connecté
     res.json((req as any).user);
   });
 
+  // Route GET pour le bouton "Sign in with Replit"
   app.get("/api/login", (req: any, res) => {
-    // On enregistre l'ID dans la session cookie
     req.session.userId = "uottawa_student_demo";
     res.redirect("/");
   });
@@ -43,7 +48,8 @@ export async function registerRoutes(
     res.json({ message: "Déconnecté" });
   });
 
-  // --- TES ROUTES PROTÉGÉES ---
+  // --- PROTECTED ROUTES (SEMESTERS, COURSES, ASSIGNMENTS) ---
+  
   app.get("/api/semesters", async (req, res) => {
     const userId = (req.user as any).claims.sub;
     const semesters = await storage.getSemesters(userId);
@@ -62,7 +68,8 @@ export async function registerRoutes(
     }
   });
 
-  // (Ajoute ici le reste de tes routes Courses et Assignments comme avant...)
+  // Note: Copie ici le reste de tes routes (Courses et Assignments) 
+  // que tu avais précédemment dans ton fichier routes.ts original.
 
   return httpServer;
 }
