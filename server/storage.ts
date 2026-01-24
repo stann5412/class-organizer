@@ -16,7 +16,8 @@ export interface IStorage {
   // Courses
   getCourses(userId: string): Promise<Course[]>;
   getCourse(id: number): Promise<Course | undefined>;
-  createCourse(course: InsertCourse): Promise<Course>;
+  // Modification : On accepte 'any' pour permettre l'injection manuelle du userId
+  createCourse(course: any): Promise<Course>;
   updateCourse(id: number, updates: UpdateCourseRequest): Promise<Course>;
   deleteCourse(id: number): Promise<void>;
 
@@ -59,6 +60,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCourse(course: any): Promise<Course> {
+    // Utilise returning() pour récupérer l'objet créé avec son ID
     const [newCourse] = await db.insert(courses).values(course).returning();
     return newCourse;
   }
@@ -90,8 +92,14 @@ export class DatabaseStorage implements IStorage {
     if (params?.completed !== undefined) {
       filtered = filtered.filter(a => a.completed === params.completed);
     }
+    
+    // Tri par date d'échéance (Calculus, Physique, etc.)
     if (params?.sortBy === 'dueDate') {
-      filtered.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+      filtered.sort((a, b) => {
+        const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+        const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+        return dateA - dateB;
+      });
     }
 
     return filtered;
