@@ -1,81 +1,35 @@
 import { db } from "./db";
 import {
   courses, assignments, semesters,
-  type InsertCourse, type InsertAssignment, type UpdateCourseRequest, type UpdateAssignmentRequest,
   type Course, type Assignment, type AssignmentsQueryParams, type Semester
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
-export interface IStorage {
-  // Semesters
-  getSemesters(userId: string): Promise<Semester[]>;
-  getSemester(id: number): Promise<Semester | undefined>;
-  createSemester(semester: any): Promise<Semester>;
-  deleteSemester(id: number): Promise<void>;
-
-  // Courses
-  getCourses(userId: string): Promise<Course[]>;
-  getCourse(id: number): Promise<Course | undefined>;
-  // Modification : On accepte 'any' pour permettre l'injection manuelle du userId
-  createCourse(course: any): Promise<Course>;
-  updateCourse(id: number, updates: UpdateCourseRequest): Promise<Course>;
-  deleteCourse(id: number): Promise<void>;
-
-  // Assignments
-  getAssignments(userId: string, params?: AssignmentsQueryParams): Promise<(Assignment & { course?: Course })[]>;
-  getAssignment(id: number): Promise<Assignment | undefined>;
-  createAssignment(assignment: InsertAssignment): Promise<Assignment>;
-  updateAssignment(id: number, updates: UpdateAssignmentRequest): Promise<Assignment>;
-  deleteAssignment(id: number): Promise<void>;
-}
-
-export class DatabaseStorage implements IStorage {
-  // Semesters
+export class DatabaseStorage {
+  // Semestres
   async getSemesters(userId: string): Promise<Semester[]> {
     return await db.select().from(semesters).where(eq(semesters.userId, userId));
   }
 
-  async getSemester(id: number): Promise<Semester | undefined> {
-    const [semester] = await db.select().from(semesters).where(eq(semesters.id, id));
-    return semester;
-  }
-
   async createSemester(semester: any): Promise<Semester> {
+    // Utilisation de la syntaxe objet de Drizzle (évite les erreurs de template sql)
     const [newSemester] = await db.insert(semesters).values(semester).returning();
     return newSemester;
   }
 
-  async deleteSemester(id: number): Promise<void> {
-    await db.delete(semesters).where(eq(semesters.id, id));
-  }
-
-  // Courses
+  // Cours
   async getCourses(userId: string): Promise<Course[]> {
     return await db.select().from(courses).where(eq(courses.userId, userId));
   }
 
-  async getCourse(id: number): Promise<Course | undefined> {
-    const [course] = await db.select().from(courses).where(eq(courses.id, id));
-    return course;
-  }
-
   async createCourse(course: any): Promise<Course> {
-    // Utilise returning() pour récupérer l'objet créé avec son ID
     const [newCourse] = await db.insert(courses).values(course).returning();
     return newCourse;
   }
 
-  async updateCourse(id: number, updates: UpdateCourseRequest): Promise<Course> {
-    const [updated] = await db.update(courses).set(updates).where(eq(courses.id, id)).returning();
-    return updated;
-  }
-
-  async deleteCourse(id: number): Promise<void> {
-    await db.delete(courses).where(eq(courses.id, id));
-  }
-
-  // Assignments
+  // Assignments (La partie la plus sensible)
   async getAssignments(userId: string, params?: AssignmentsQueryParams): Promise<(Assignment & { course?: Course })[]> {
+    // On utilise la syntaxe relationnelle simplifiée
     const results = await db.select({
       assignment: assignments,
       course: courses
@@ -84,44 +38,7 @@ export class DatabaseStorage implements IStorage {
     .innerJoin(courses, eq(assignments.courseId, courses.id))
     .where(eq(courses.userId, userId));
 
-    let filtered = results.map(r => ({ ...r.assignment, course: r.course }));
-
-    if (params?.courseId) {
-      filtered = filtered.filter(a => a.courseId === params.courseId);
-    }
-    if (params?.completed !== undefined) {
-      filtered = filtered.filter(a => a.completed === params.completed);
-    }
-    
-    // Tri par date d'échéance (Calculus, Physique, etc.)
-    if (params?.sortBy === 'dueDate') {
-      filtered.sort((a, b) => {
-        const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
-        const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
-        return dateA - dateB;
-      });
-    }
-
-    return filtered;
-  }
-
-  async getAssignment(id: number): Promise<Assignment | undefined> {
-    const [assignment] = await db.select().from(assignments).where(eq(assignments.id, id));
-    return assignment;
-  }
-
-  async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
-    const [newAssignment] = await db.insert(assignments).values(assignment).returning();
-    return newAssignment;
-  }
-
-  async updateAssignment(id: number, updates: UpdateAssignmentRequest): Promise<Assignment> {
-    const [updated] = await db.update(assignments).set(updates).where(eq(assignments.id, id)).returning();
-    return updated;
-  }
-
-  async deleteAssignment(id: number): Promise<void> {
-    await db.delete(assignments).where(eq(assignments.id, id));
+    return results.map(r => ({ ...r.assignment, course: r.course }));
   }
 }
 
