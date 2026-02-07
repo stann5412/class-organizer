@@ -3,7 +3,15 @@ import {
   courses, assignments, semesters,
   type Course, type Assignment, type AssignmentsQueryParams, type Semester
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+
+// Interface pour éviter les erreurs "name does not exist on type any"
+interface InsertSemester {
+  name: string;
+  userId: string;
+  startDate?: string | Date;
+  endDate?: string | Date;
+}
 
 export class DatabaseStorage {
   // Semestres
@@ -11,9 +19,20 @@ export class DatabaseStorage {
     return await db.select().from(semesters).where(eq(semesters.userId, userId));
   }
 
-  async createSemester(semester: any): Promise<Semester> {
-    // Utilisation de la syntaxe objet de Drizzle (évite les erreurs de template sql)
-    const [newSemester] = await db.insert(semesters).values(semester).returning();
+  async createSemester(semester: InsertSemester): Promise<Semester> {
+    // Conversion sécurisée des dates pour PostgreSQL
+    const startDate = semester.startDate ? new Date(semester.startDate) : new Date();
+    const endDate = semester.endDate ? new Date(semester.endDate) : new Date();
+
+    const [newSemester] = await db.insert(semesters)
+      .values({
+        name: semester.name,
+        userId: semester.userId,
+        startDate: startDate,
+        endDate: endDate,
+      } as any)
+      .returning();
+    
     return newSemester;
   }
 
@@ -23,13 +42,19 @@ export class DatabaseStorage {
   }
 
   async createCourse(course: any): Promise<Course> {
-    const [newCourse] = await db.insert(courses).values(course).returning();
+    // On s'assure que l'ID du semestre est bien un nombre (clé étrangère)
+    const formattedCourse = {
+      ...course,
+      semesterId: course.semesterId ? Number(course.semesterId) : null,
+      userId: course.userId || "uottawa_student_demo"
+    };
+
+    const [newCourse] = await db.insert(courses).values(formattedCourse).returning();
     return newCourse;
   }
 
-  // Assignments (La partie la plus sensible)
+  // Devoirs (Assignments)
   async getAssignments(userId: string, params?: AssignmentsQueryParams): Promise<(Assignment & { course?: Course })[]> {
-    // On utilise la syntaxe relationnelle simplifiée
     const results = await db.select({
       assignment: assignments,
       course: courses

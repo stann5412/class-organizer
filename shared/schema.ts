@@ -12,9 +12,9 @@ export const semesters = pgTable("semesters", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
-  // Ajoute ces lignes pour correspondre à Neon
-  startDate: date("start_date"), 
-  endDate: date("end_date"),
+  // Ces noms doivent correspondre exactement aux colonnes ALTER TABLE
+  startDate: date("start_date").notNull(), 
+  endDate: date("end_date").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
