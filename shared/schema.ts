@@ -10,10 +10,11 @@ export * from "./models/auth";
 
 export const semesters = pgTable("semesters", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id),
-  name: text("name").notNull(), // e.g. "Winter 2026"
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  // Ajoute ces lignes pour correspondre à Neon
+  startDate: date("start_date"), 
+  endDate: date("end_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
