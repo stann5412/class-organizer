@@ -5,7 +5,7 @@ import {
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-// Interface pour éviter les erreurs "name does not exist on type any"
+// Interface pour le typage TypeScript
 interface InsertSemester {
   name: string;
   userId: string;
@@ -14,35 +14,38 @@ interface InsertSemester {
 }
 
 export class DatabaseStorage {
-  // Semestres
+  // --- SEMESTRES ---
   async getSemesters(userId: string): Promise<Semester[]> {
     return await db.select().from(semesters).where(eq(semesters.userId, userId));
   }
 
-  async createSemester(semester: InsertSemester): Promise<Semester> {
-    // Conversion sécurisée des dates pour PostgreSQL
-    const startDate = semester.startDate ? new Date(semester.startDate) : new Date();
-    const endDate = semester.endDate ? new Date(semester.endDate) : new Date();
+  async createSemester(semester: any): Promise<Semester> {
+    // Fonction interne pour transformer les dates JS en format SQL (YYYY-MM-DD)
+    const formatDate = (d: any) => {
+      if (!d) return new Date().toISOString().split('T')[0];
+      const date = new Date(d);
+      return date.toISOString().split('T')[0]; 
+    };
 
     const [newSemester] = await db.insert(semesters)
       .values({
         name: semester.name,
         userId: semester.userId,
-        startDate: startDate,
-        endDate: endDate,
+        startDate: formatDate(semester.startDate),
+        endDate: formatDate(semester.endDate),
       } as any)
       .returning();
-    
+      
     return newSemester;
   }
 
-  // Cours
+  // --- COURS ---
   async getCourses(userId: string): Promise<Course[]> {
     return await db.select().from(courses).where(eq(courses.userId, userId));
   }
 
   async createCourse(course: any): Promise<Course> {
-    // On s'assure que l'ID du semestre est bien un nombre (clé étrangère)
+    // On s'assure que l'ID du semestre est bien un nombre et que l'utilisateur est défini
     const formattedCourse = {
       ...course,
       semesterId: course.semesterId ? Number(course.semesterId) : null,
@@ -53,7 +56,7 @@ export class DatabaseStorage {
     return newCourse;
   }
 
-  // Devoirs (Assignments)
+  // --- DEVOIRS (ASSIGNMENTS) ---
   async getAssignments(userId: string, params?: AssignmentsQueryParams): Promise<(Assignment & { course?: Course })[]> {
     const results = await db.select({
       assignment: assignments,
