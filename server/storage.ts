@@ -15,7 +15,7 @@ export class DatabaseStorage {
     const formatDate = (d: any) => {
       if (!d) return new Date().toISOString().split('T')[0];
       const date = new Date(d);
-      return date.toISOString().split('T')[0];
+      return date.toISOString().split('T')[0]; 
     };
 
     const [newSemester] = await db.insert(semesters)
@@ -26,7 +26,7 @@ export class DatabaseStorage {
         endDate: formatDate(semester.endDate),
       })
       .returning();
-    
+      
     return newSemester;
   }
 
@@ -36,13 +36,15 @@ export class DatabaseStorage {
   }
 
   async createCourse(course: any): Promise<Course> {
-    // Nettoyage du weeklySchedule pour éviter le "double stringify"
-    let cleanSchedule = course.weeklySchedule;
-    if (typeof cleanSchedule === 'string') {
+    // NETTOYAGE DU SCHEDULE (Problème $7)
+    let finalSchedule = course.weeklySchedule;
+    
+    // Si c'est un tableau qui contient une chaîne JSON (ton erreur actuelle)
+    if (Array.isArray(finalSchedule) && typeof finalSchedule[0] === 'string') {
       try {
-        cleanSchedule = JSON.parse(cleanSchedule);
+        finalSchedule = JSON.parse(finalSchedule[0]);
       } catch (e) {
-        cleanSchedule = [];
+        // Fallback si le parse échoue
       }
     }
 
@@ -54,7 +56,7 @@ export class DatabaseStorage {
         code: course.code,
         location: course.location || "",
         schedule: course.schedule || "",
-        weeklySchedule: cleanSchedule || [],
+        weeklySchedule: finalSchedule, 
         color: course.color || "bg-blue-500",
       })
       .returning();
