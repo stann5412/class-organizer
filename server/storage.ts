@@ -6,7 +6,6 @@ import {
 import { eq } from "drizzle-orm";
 
 export class DatabaseStorage {
-  // --- SEMESTRES ---
   async getSemesters(userId: string): Promise<Semester[]> {
     return await db.select().from(semesters).where(eq(semesters.userId, userId));
   }
@@ -17,7 +16,6 @@ export class DatabaseStorage {
       const date = new Date(d);
       return date.toISOString().split('T')[0]; 
     };
-
     const [newSemester] = await db.insert(semesters)
       .values({
         userId: semester.userId,
@@ -26,30 +24,29 @@ export class DatabaseStorage {
         endDate: formatDate(semester.endDate),
       })
       .returning();
-      
     return newSemester;
   }
 
-  // --- COURS ---
   async getCourses(userId: string): Promise<Course[]> {
     return await db.select().from(courses).where(eq(courses.userId, userId));
   }
 
   async createCourse(course: any): Promise<Course> {
-    // FORCE LE FORMAT TABLEAU (JSON ARRAY)
-    let finalSchedule = [];
+    // NETTOYAGE CRUCIAL : On s'assure d'envoyer un vrai objet JSON, pas une string
+    let cleanSchedule = course.weeklySchedule;
     
-    if (course.weeklySchedule) {
-      if (Array.isArray(course.weeklySchedule)) {
-        finalSchedule = course.weeklySchedule;
-      } else if (typeof course.weeklySchedule === 'string') {
-        try {
-          const parsed = JSON.parse(course.weeklySchedule);
-          finalSchedule = Array.isArray(parsed) ? parsed : [parsed];
-        } catch (e) {
-          finalSchedule = [];
-        }
+    if (Array.isArray(cleanSchedule) && typeof cleanSchedule[0] === 'string') {
+      try {
+        // On extrait le JSON caché dans le tableau de texte
+        cleanSchedule = JSON.parse(cleanSchedule[0]);
+      } catch (e) {
+        cleanSchedule = [];
       }
+    }
+    
+    // Si c'est encore un objet seul, on le met dans un tableau
+    if (cleanSchedule && !Array.isArray(cleanSchedule)) {
+      cleanSchedule = [cleanSchedule];
     }
 
     const [newCourse] = await db.insert(courses)
@@ -60,7 +57,7 @@ export class DatabaseStorage {
         code: course.code,
         location: course.location || "",
         schedule: course.schedule || "",
-        weeklySchedule: finalSchedule, // Envoie [] au lieu de {}
+        weeklySchedule: cleanSchedule || [],
         color: course.color || "bg-blue-500",
       })
       .returning();
@@ -68,7 +65,6 @@ export class DatabaseStorage {
     return newCourse;
   }
 
-  // --- DEVOIRS (ASSIGNMENTS) ---
   async getAssignments(userId: string, params?: AssignmentsQueryParams): Promise<(Assignment & { course?: Course })[]> {
     const results = await db.select({
       assignment: assignments,
@@ -77,7 +73,6 @@ export class DatabaseStorage {
     .from(assignments)
     .innerJoin(courses, eq(assignments.courseId, courses.id))
     .where(eq(courses.userId, userId));
-
     return results.map(r => ({ ...r.assignment, course: r.course }));
   }
 }
