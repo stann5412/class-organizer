@@ -19,25 +19,34 @@ export class DatabaseStorage {
     return await db.select().from(semesters).where(eq(semesters.userId, userId));
   }
 
-  async createSemester(semester: any): Promise<Semester> {
-    // Fonction interne pour transformer les dates JS en format SQL (YYYY-MM-DD)
-    const formatDate = (d: any) => {
-      if (!d) return new Date().toISOString().split('T')[0];
-      const date = new Date(d);
-      return date.toISOString().split('T')[0]; 
-    };
+ async createSemester(semester: any): Promise<Semester> {
+  const formatDate = (d: any) => {
+    if (!d) return new Date().toISOString().split('T')[0];
+    const date = new Date(d);
+    return date.toISOString().split('T')[0]; 
+  };
 
-    const [newSemester] = await db.insert(semesters)
-      .values({
-        name: semester.name,
-        userId: semester.userId,
-        startDate: formatDate(semester.startDate),
-        endDate: formatDate(semester.endDate),
-      } as any)
-      .returning();
-      
-    return newSemester;
-  }
+  // On extrait les valeurs SANS l'id pour laisser le SERIAL de Postgres s'en charger
+  const valuesToInsert = {
+    user_id: semester.userId,
+    name: semester.name,
+    start_date: formatDate(semester.startDate),
+    end_date: formatDate(semester.endDate),
+  };
+
+  // Utilise db.execute pour contourner les problèmes de mapping de Drizzle si nécessaire
+  // OU utilise le format standard mais vérifie bien les clés :
+  const [newSemester] = await db.insert(semesters)
+    .values({
+      userId: semester.userId,
+      name: semester.name,
+      startDate: formatDate(semester.startDate),
+      endDate: formatDate(semester.endDate),
+    })
+    .returning();
+    
+  return newSemester;
+}
 
   // --- COURS ---
   async getCourses(userId: string): Promise<Course[]> {
