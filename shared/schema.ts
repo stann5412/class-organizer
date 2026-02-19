@@ -13,8 +13,8 @@ export const semesters = pgTable("semesters", {
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
   // Ces noms doivent correspondre exactement aux colonnes ALTER TABLE
-  startDate: date("start_date").notNull(), 
-  endDate: date("end_date").notNull(),
+  startDate: text("start_date").notNull(), 
+  endDate: text("end_date").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
