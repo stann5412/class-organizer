@@ -5,48 +5,30 @@ import {
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-// Interface pour le typage TypeScript
-interface InsertSemester {
-  name: string;
-  userId: string;
-  startDate?: string | Date;
-  endDate?: string | Date;
-}
-
 export class DatabaseStorage {
   // --- SEMESTRES ---
   async getSemesters(userId: string): Promise<Semester[]> {
     return await db.select().from(semesters).where(eq(semesters.userId, userId));
   }
 
- async createSemester(semester: any): Promise<Semester> {
-  const formatDate = (d: any) => {
-    if (!d) return new Date().toISOString().split('T')[0];
-    const date = new Date(d);
-    return date.toISOString().split('T')[0]; 
-  };
+  async createSemester(semester: any): Promise<Semester> {
+    const formatDate = (d: any) => {
+      if (!d) return new Date().toISOString().split('T')[0];
+      const date = new Date(d);
+      return date.toISOString().split('T')[0];
+    };
 
-  // On extrait les valeurs SANS l'id pour laisser le SERIAL de Postgres s'en charger
-  const valuesToInsert = {
-    user_id: semester.userId,
-    name: semester.name,
-    start_date: formatDate(semester.startDate),
-    end_date: formatDate(semester.endDate),
-  };
-
-  // Utilise db.execute pour contourner les problèmes de mapping de Drizzle si nécessaire
-  // OU utilise le format standard mais vérifie bien les clés :
-  const [newSemester] = await db.insert(semesters)
-    .values({
-      userId: semester.userId,
-      name: semester.name,
-      startDate: formatDate(semester.startDate),
-      endDate: formatDate(semester.endDate),
-    })
-    .returning();
+    const [newSemester] = await db.insert(semesters)
+      .values({
+        userId: semester.userId,
+        name: semester.name,
+        startDate: formatDate(semester.startDate),
+        endDate: formatDate(semester.endDate),
+      })
+      .returning();
     
-  return newSemester;
-}
+    return newSemester;
+  }
 
   // --- COURS ---
   async getCourses(userId: string): Promise<Course[]> {
@@ -54,14 +36,29 @@ export class DatabaseStorage {
   }
 
   async createCourse(course: any): Promise<Course> {
-    // On s'assure que l'ID du semestre est bien un nombre et que l'utilisateur est défini
-    const formattedCourse = {
-      ...course,
-      semesterId: course.semesterId ? Number(course.semesterId) : null,
-      userId: course.userId || "uottawa_student_demo"
-    };
+    // Nettoyage du weeklySchedule pour éviter le "double stringify"
+    let cleanSchedule = course.weeklySchedule;
+    if (typeof cleanSchedule === 'string') {
+      try {
+        cleanSchedule = JSON.parse(cleanSchedule);
+      } catch (e) {
+        cleanSchedule = [];
+      }
+    }
 
-    const [newCourse] = await db.insert(courses).values(formattedCourse).returning();
+    const [newCourse] = await db.insert(courses)
+      .values({
+        userId: course.userId || "uottawa_student_demo",
+        semesterId: course.semesterId ? Number(course.semesterId) : null,
+        name: course.name,
+        code: course.code,
+        location: course.location || "",
+        schedule: course.schedule || "",
+        weeklySchedule: cleanSchedule || [],
+        color: course.color || "bg-blue-500",
+      })
+      .returning();
+
     return newCourse;
   }
 
