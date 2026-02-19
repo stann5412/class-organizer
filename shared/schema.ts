@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, date, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -26,7 +26,7 @@ export const courses = pgTable("courses", {
   code: text("code").notNull(),
   location: text("location"),
   schedule: text("schedule"), // Legacy
-  weeklySchedule: text("weekly_schedule").array(), // Array of JSON stringified objects: { day, start, end, type, frequency }
+  weeklySchedule: jsonb("weekly_schedule").$type<any[]>().default([]), // Array of objects: { day, start, end, type, frequency }
   color: text("color").default("blue"),
   createdAt: timestamp("created_at").defaultNow(),
 });
