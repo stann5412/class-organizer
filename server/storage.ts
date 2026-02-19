@@ -36,15 +36,19 @@ export class DatabaseStorage {
   }
 
   async createCourse(course: any): Promise<Course> {
-    // NETTOYAGE DU SCHEDULE (Problème $7)
-    let finalSchedule = course.weeklySchedule;
+    // FORCE LE FORMAT TABLEAU (JSON ARRAY)
+    let finalSchedule = [];
     
-    // Si c'est un tableau qui contient une chaîne JSON (ton erreur actuelle)
-    if (Array.isArray(finalSchedule) && typeof finalSchedule[0] === 'string') {
-      try {
-        finalSchedule = JSON.parse(finalSchedule[0]);
-      } catch (e) {
-        // Fallback si le parse échoue
+    if (course.weeklySchedule) {
+      if (Array.isArray(course.weeklySchedule)) {
+        finalSchedule = course.weeklySchedule;
+      } else if (typeof course.weeklySchedule === 'string') {
+        try {
+          const parsed = JSON.parse(course.weeklySchedule);
+          finalSchedule = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+          finalSchedule = [];
+        }
       }
     }
 
@@ -56,7 +60,7 @@ export class DatabaseStorage {
         code: course.code,
         location: course.location || "",
         schedule: course.schedule || "",
-        weeklySchedule: finalSchedule, 
+        weeklySchedule: finalSchedule, // Envoie [] au lieu de {}
         color: course.color || "bg-blue-500",
       })
       .returning();
